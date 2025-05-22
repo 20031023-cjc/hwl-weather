@@ -1,7 +1,5 @@
-// API Key
 const API_KEY = 'da7be22a064e8e36c8e9385be0d67fc4';
 
-// 多语言文本定义
 const translations = {
   ja: {
     title: '世界の天気を調べる',
@@ -10,6 +8,7 @@ const translations = {
     wind: '風速',
     langName: '日本語',
     noResults: '結果がありません',
+    loading: '読み込み中...',
   },
   en: {
     title: 'Check Weather Worldwide',
@@ -18,6 +17,7 @@ const translations = {
     wind: 'Wind Speed',
     langName: 'English',
     noResults: 'No results found',
+    loading: 'Loading...',
   },
   zh: {
     title: '查询全球天气',
@@ -26,173 +26,115 @@ const translations = {
     wind: '风速',
     langName: '中文',
     noResults: '未找到结果',
+    loading: '加载中...',
   },
 };
 
-// 模拟城市数据（支持拼音模糊+中文+日文+英文）
-const cityList = [
-  { name_ja: '東京', name_en: 'Tokyo', name_zh: '东京', pinyin: 'tokyo' },
-  { name_ja: '福岡', name_en: 'Fukuoka', name_zh: '福冈', pinyin: 'fukuoka' },
-  { name_ja: '大阪', name_en: 'Osaka', name_zh: '大阪', pinyin: 'osaka' },
-  { name_ja: '札幌', name_en: 'Sapporo', name_zh: '札幌', pinyin: 'sapporo' },
-  { name_ja: '京都', name_en: 'Kyoto', name_zh: '京都', pinyin: 'kyoto' },
-  { name_ja: 'ニューヨーク', name_en: 'New York', name_zh: '纽约', pinyin: 'newyork' },
-  { name_ja: '福州', name_en: 'Fuzhou', name_zh: '福州', pinyin: 'fuzhou' },
-  { name_ja: '北京', name_en: 'Beijing', name_zh: '北京', pinyin: 'beijing' },
-  { name_ja: '上海', name_en: 'Shanghai', name_zh: '上海', pinyin: 'shanghai' },
-  { name_ja: '広州', name_en: 'Guangzhou', name_zh: '广州', pinyin: 'guangzhou' },
-  { name_ja: '釜山', name_en: 'Busan', name_zh: '釜山', pinyin: 'busan' },
-];
-
-// 当前语言状态
 let currentLang = 'ja';
 
-// 获取页面元素
-const langButtons = document.querySelectorAll('.lang-switch button');
-const titleEl = document.getElementById('title');
-const searchInput = document.getElementById('searchInput');
-const suggestionsEl = document.getElementById('suggestions');
-const weatherDisplay = document.getElementById('weatherDisplay');
-const cityNameEl = document.getElementById('cityName');
-const temperatureEl = document.getElementById('temperature');
-const weatherDescEl = document.getElementById('weatherDesc');
-const humidityEl = document.getElementById('humidity');
-const windEl = document.getElementById('wind');
-const weatherIconEl = document.getElementById('weatherIcon');
+const elements = {
+  title: document.getElementById('title'),
+  searchInput: document.getElementById('searchInput'),
+  suggestions: document.getElementById('suggestions'),
+  weatherDisplay: document.getElementById('weatherDisplay'),
+  cityName: document.getElementById('cityName'),
+  temperature: document.getElementById('temperature'),
+  weatherIcon: document.getElementById('weatherIcon'),
+  weatherDesc: document.getElementById('weatherDesc'),
+  humidity: document.getElementById('humidity'),
+  wind: document.getElementById('wind'),
+  loading: document.getElementById('loading'),
+};
 
-// 语言切换处理
-langButtons.forEach(btn => {
+// 国际城市搜索（使用 OpenWeather API 内置城市）
+async function searchCity(query) {
+  const url = `https://api.openweathermap.org/data/2.5/weather?q=${query}&appid=${API_KEY}&units=metric&lang=${currentLang}`;
+  try {
+    showLoading(true);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    displayWeather(data);
+  } catch {
+    showNoResult();
+  } finally {
+    showLoading(false);
+  }
+}
+
+function displayWeather(data) {
+  const { name, weather, main, wind } = data;
+  elements.cityName.textContent = name;
+  elements.temperature.textContent = `${main.temp}°C`;
+  elements.weatherIcon.src = `https://openweathermap.org/img/wn/${weather[0].icon}@2x.png`;
+  elements.weatherDesc.textContent = weather[0].description;
+  elements.humidity.textContent = `${translations[currentLang].humidity}: ${main.humidity}%`;
+  elements.wind.textContent = `${translations[currentLang].wind}: ${wind.speed} m/s`;
+  elements.weatherDisplay.classList.remove('hidden');
+}
+
+function showLoading(show) {
+  elements.loading.classList.toggle('hidden', !show);
+  if (show) {
+    elements.weatherDisplay.classList.add('hidden');
+  }
+}
+
+function showNoResult() {
+  elements.cityName.textContent = translations[currentLang].noResults;
+  elements.temperature.textContent = '';
+  elements.weatherIcon.src = '';
+  elements.weatherDesc.textContent = '';
+  elements.humidity.textContent = '';
+  elements.wind.textContent = '';
+  elements.weatherDisplay.classList.remove('hidden');
+}
+
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const query = e.target.value.trim();
+    if (query) searchCity(query);
+  }
+});
+
+document.querySelectorAll('.lang-switch button').forEach((btn) => {
   btn.addEventListener('click', () => {
-    if (btn.dataset.lang === currentLang) return;
-    currentLang = btn.dataset.lang;
-    updateLanguage();
-    clearWeather();
-    clearSuggestions();
-    searchInput.value = '';
+    document.querySelectorAll('.lang-switch button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLang = btn.getAttribute('data-lang');
+    updateLang();
   });
 });
 
-function updateLanguage() {
-  titleEl.textContent = translations[currentLang].title;
-  searchInput.placeholder = translations[currentLang].placeholder;
-  langButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.lang === currentLang);
-  });
+function updateLang() {
+  const t = translations[currentLang];
+  elements.title.textContent = t.title;
+  elements.searchInput.placeholder = t.placeholder;
+  // If weather is showing, update text
+  if (!elements.weatherDisplay.classList.contains('hidden') && elements.humidity.textContent) {
+    const humidityText = elements.humidity.textContent.match(/\d+/)?.[0];
+    const windText = elements.wind.textContent.match(/\d+(\.\d+)?/)?.[0];
+    elements.humidity.textContent = `${t.humidity}: ${humidityText}%`;
+    elements.wind.textContent = `${t.wind}: ${windText} m/s`;
+  }
 }
 
-// 清空天气信息
-function clearWeather() {
-  weatherDisplay.classList.add('hidden');
-  cityNameEl.textContent = '';
-  temperatureEl.textContent = '';
-  weatherDescEl.textContent = '';
-  humidityEl.textContent = '';
-  windEl.textContent = '';
-  weatherIconEl.src = '';
-  weatherIconEl.alt = '';
-}
-
-// 清空建议列表
-function clearSuggestions() {
-  suggestionsEl.innerHTML = '';
-  suggestionsEl.classList.remove('visible');
-}
-
-// 模糊搜索城市
-function fuzzySearch(query) {
-  if (!query) return [];
-  const q = query.trim().toLowerCase();
-  const results = cityList.filter(city => {
-    return (
-      city.name_ja.includes(q) ||
-      city.name_en.toLowerCase().includes(q) ||
-      city.name_zh.includes(q) ||
-      city.pinyin.includes(q)
-    );
-  });
-  return results.slice(0, 6);
-}
-
-// 显示建议列表
-function showSuggestions(list) {
-  clearSuggestions();
-  if (list.length === 0) {
-    suggestionsEl.innerHTML = `<li class="no-results">${translations[currentLang].noResults}</li>`;
-  } else {
-    list.forEach(city => {
-      const li = document.createElement('li');
-      li.textContent = currentLang === 'ja' ? city.name_ja : currentLang === 'en' ? city.name_en : city.name_zh;
-      li.dataset.name_en = city.name_en;
-      li.addEventListener('click', () => {
-        selectCity(city.name_en);
-      });
-      suggestionsEl.appendChild(li);
+// 自动定位用户位置
+window.addEventListener('load', () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&lang=${currentLang}`;
+      try {
+        showLoading(true);
+        const res = await fetch(url);
+        const data = await res.json();
+        displayWeather(data);
+      } catch {
+        console.error('自动定位天气失败');
+      } finally {
+        showLoading(false);
+      }
     });
   }
-  suggestionsEl.classList.add('visible');
-}
-
-// 选中城市后查询天气
-function selectCity(cityName) {
-  searchInput.value = cityName;
-  clearSuggestions();
-  fetchWeather(cityName);
-}
-
-// 调用OpenWeatherMap API获取天气数据
-async function fetchWeather(cityName) {
-  clearWeather();
-  weatherDisplay.classList.remove('hidden');
-  cityNameEl.textContent = cityName;
-
-  try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-      cityName
-    )}&appid=${API_KEY}&units=metric&lang=${currentLang}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Network response was not ok');
-    const data = await res.json();
-
-    temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
-    weatherDescEl.textContent = data.weather[0].description;
-    humidityEl.textContent = `${translations[currentLang].humidity}: ${data.main.humidity}%`;
-    windEl.textContent = `${translations[currentLang].wind}: ${data.wind.speed} m/s`;
-    weatherIconEl.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
-    weatherIconEl.alt = data.weather[0].description;
-  } catch (err) {
-    cityNameEl.textContent = currentLang === 'ja' ? '都市が見つかりません' : currentLang === 'en' ? 'City not found' : '未找到城市';
-    temperatureEl.textContent = '';
-    weatherDescEl.textContent = '';
-    humidityEl.textContent = '';
-    windEl.textContent = '';
-    weatherIconEl.src = '';
-    weatherIconEl.alt = '';
-  }
-}
-
-// 输入事件处理 - 模糊搜索
-searchInput.addEventListener('input', () => {
-  const query = searchInput.value;
-  if (!query) {
-    clearSuggestions();
-    return;
-  }
-  const results = fuzzySearch(query);
-  showSuggestions(results);
 });
-
-// 按键事件处理 - 按回车选中第一个建议
-searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const firstSuggestion = suggestionsEl.querySelector('li:not(.no-results)');
-    if (firstSuggestion) {
-      selectCity(firstSuggestion.dataset.name_en);
-    }
-  }
-});
-
-// 页面加载初始化
-updateLanguage();
-clearWeather();
-clearSuggestions();
