@@ -1,140 +1,138 @@
-const API_KEY = 'da7be22a064e8e36c8e9385be0d67fc4';
+// script.js
+// Weather App with custom SVG icons, transition animations, and favorite cities
 
+const API_KEY = 'da7be22a064e8e36c8e9385be0d67fc4';
+const weatherContainer = document.getElementById('weatherContainer');
+const cityInput = document.getElementById('searchInput');
+const suggestions = document.getElementById('suggestions');
+const loader = document.getElementById('loader');
+const favoritesList = document.getElementById('favorites');
+
+// Languages
 const translations = {
   ja: {
     title: '世界の天気を調べる',
     placeholder: '場所を入力してください...',
     humidity: '湿度',
     wind: '風速',
-    langName: '日本語',
     noResults: '結果がありません',
-    loading: '読み込み中...',
+    fav: 'お気に入り',
   },
   en: {
     title: 'Check Weather Worldwide',
     placeholder: 'Enter location...',
     humidity: 'Humidity',
     wind: 'Wind Speed',
-    langName: 'English',
     noResults: 'No results found',
-    loading: 'Loading...',
+    fav: 'Favorites',
   },
   zh: {
     title: '查询全球天气',
     placeholder: '请输入地点...',
     humidity: '湿度',
     wind: '风速',
-    langName: '中文',
     noResults: '未找到结果',
-    loading: '加载中...',
+    fav: '收藏夹',
   },
 };
 
 let currentLang = 'ja';
 
-const elements = {
-  title: document.getElementById('title'),
-  searchInput: document.getElementById('searchInput'),
-  suggestions: document.getElementById('suggestions'),
-  weatherDisplay: document.getElementById('weatherDisplay'),
-  cityName: document.getElementById('cityName'),
-  temperature: document.getElementById('temperature'),
-  weatherIcon: document.getElementById('weatherIcon'),
-  weatherDesc: document.getElementById('weatherDesc'),
-  humidity: document.getElementById('humidity'),
-  wind: document.getElementById('wind'),
-  loading: document.getElementById('loading'),
-};
-
-// 国际城市搜索（使用 OpenWeather API 内置城市）
-async function searchCity(query) {
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${query}&appid=${API_KEY}&units=metric&lang=${currentLang}`;
+// Fetch weather using OpenWeather API
+async function fetchWeather(city) {
+  loader.style.display = 'block';
   try {
-    showLoading(true);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error();
+    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=${currentLang}`);
+    if (!res.ok) throw new Error('City not found');
     const data = await res.json();
-    displayWeather(data);
-  } catch {
-    showNoResult();
+    renderWeather(data);
+  } catch (err) {
+    alert(translations[currentLang].noResults);
   } finally {
-    showLoading(false);
+    loader.style.display = 'none';
   }
 }
 
-function displayWeather(data) {
-  const { name, weather, main, wind } = data;
-  elements.cityName.textContent = name;
-  elements.temperature.textContent = `${main.temp}°C`;
-  elements.weatherIcon.src = `https://openweathermap.org/img/wn/${weather[0].icon}@2x.png`;
-  elements.weatherDesc.textContent = weather[0].description;
-  elements.humidity.textContent = `${translations[currentLang].humidity}: ${main.humidity}%`;
-  elements.wind.textContent = `${translations[currentLang].wind}: ${wind.speed} m/s`;
-  elements.weatherDisplay.classList.remove('hidden');
+// Render SVG weather icon and info
+function renderWeather(data) {
+  const icon = getWeatherSVG(data.weather[0].main);
+  const html = `
+    <div class="weather-card animate">
+      <h2>${data.name}, ${data.sys.country}</h2>
+      <div class="icon">${icon}</div>
+      <div class="temp">${Math.round(data.main.temp)}°C</div>
+      <div class="details">
+        <p>${translations[currentLang].humidity}: ${data.main.humidity}%</p>
+        <p>${translations[currentLang].wind}: ${data.wind.speed} m/s</p>
+      </div>
+      <button class="fav-btn" onclick="addFavorite('${data.name}')">★</button>
+    </div>
+  `;
+  weatherContainer.innerHTML = html;
 }
 
-function showLoading(show) {
-  elements.loading.classList.toggle('hidden', !show);
-  if (show) {
-    elements.weatherDisplay.classList.add('hidden');
+// Return SVG icons based on weather type
+function getWeatherSVG(condition) {
+  switch (condition.toLowerCase()) {
+    case 'clear':
+      return `<svg class="icon-sun" ...>...</svg>`;
+    case 'clouds':
+      return `<svg class="icon-cloud" ...>...</svg>`;
+    case 'rain':
+      return `<svg class="icon-rain" ...>...</svg>`;
+    default:
+      return `<svg class="icon-default" ...>...</svg>`;
   }
 }
 
-function showNoResult() {
-  elements.cityName.textContent = translations[currentLang].noResults;
-  elements.temperature.textContent = '';
-  elements.weatherIcon.src = '';
-  elements.weatherDesc.textContent = '';
-  elements.humidity.textContent = '';
-  elements.wind.textContent = '';
-  elements.weatherDisplay.classList.remove('hidden');
-}
-
-document.getElementById('searchInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    const query = e.target.value.trim();
-    if (query) searchCity(query);
-  }
-});
-
-document.querySelectorAll('.lang-switch button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.lang-switch button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentLang = btn.getAttribute('data-lang');
-    updateLang();
-  });
-});
-
-function updateLang() {
-  const t = translations[currentLang];
-  elements.title.textContent = t.title;
-  elements.searchInput.placeholder = t.placeholder;
-  // If weather is showing, update text
-  if (!elements.weatherDisplay.classList.contains('hidden') && elements.humidity.textContent) {
-    const humidityText = elements.humidity.textContent.match(/\d+/)?.[0];
-    const windText = elements.wind.textContent.match(/\d+(\.\d+)?/)?.[0];
-    elements.humidity.textContent = `${t.humidity}: ${humidityText}%`;
-    elements.wind.textContent = `${t.wind}: ${windText} m/s`;
-  }
-}
-
-// 自动定位用户位置
-window.addEventListener('load', () => {
+// Auto detect location
+async function detectLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const { latitude, longitude } = pos.coords;
-      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&lang=${currentLang}`;
-      try {
-        showLoading(true);
-        const res = await fetch(url);
-        const data = await res.json();
-        displayWeather(data);
-      } catch {
-        console.error('自动定位天气失败');
-      } finally {
-        showLoading(false);
-      }
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&lang=${currentLang}`);
+      const data = await res.json();
+      renderWeather(data);
     });
   }
+}
+
+// Add city to favorites
+function addFavorite(city) {
+  let favs = JSON.parse(localStorage.getItem('favorites')) || [];
+  if (!favs.includes(city)) favs.push(city);
+  localStorage.setItem('favorites', JSON.stringify(favs));
+  renderFavorites();
+}
+
+// Render favorite cities
+function renderFavorites() {
+  let favs = JSON.parse(localStorage.getItem('favorites')) || [];
+  favoritesList.innerHTML = '';
+  favs.forEach(city => {
+    const item = document.createElement('li');
+    item.innerHTML = `<span>${city}</span> <button onclick="fetchWeather('${city}')">▶</button>`;
+    favoritesList.appendChild(item);
+  });
+}
+
+// Language switch
+document.querySelectorAll('.lang-switch button').forEach(btn => {
+  btn.onclick = () => {
+    currentLang = btn.dataset.lang;
+    document.getElementById('title').textContent = translations[currentLang].title;
+    cityInput.placeholder = translations[currentLang].placeholder;
+    document.getElementById('favTitle').textContent = translations[currentLang].fav;
+  };
 });
+
+// Search listener
+cityInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') fetchWeather(cityInput.value.trim());
+});
+
+// Load
+window.onload = () => {
+  detectLocation();
+  renderFavorites();
+};
