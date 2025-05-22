@@ -1,0 +1,195 @@
+/* 字体和背景 */
+body, html {
+  margin: 0; padding: 0; height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #f3f4f6;
+  overflow: hidden;
+}
+
+/* 主容器：玻璃模糊效果 */
+.app-container {
+  background: rgba(255 255 255 / 0.12);
+  backdrop-filter: blur(16px);
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  width: 100%;
+  max-width: 480px;
+  padding: 2.5rem 2rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+}
+
+/* 标题 */
+h1 {
+  font-weight: 700;
+  font-size: 2.25rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* 语言切换按钮 */
+.lang-select {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255 255 255 / 0.2);
+  border: none;
+  border-radius: 0.5rem;
+  color: #f3f4f6;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+.lang-select:hover {
+  background: rgba(255 255 255 / 0.35);
+}
+
+/* 输入框 */
+.search-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 1.1rem;
+  border-radius: 0.75rem;
+  border: none;
+  outline: none;
+  background: rgba(255 255 255 / 0.25);
+  color: #f3f4f6;
+  box-shadow: inset 0 0 6px rgba(255 255 255 / 0.3);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.search-input::placeholder {
+  color: rgba(255 255 255 / 0.6);
+}
+.search-input:focus {
+  background: rgba(255 255 255 / 0.4);
+  box-shadow: inset 0 0 8px #a78bfa;
+}
+
+/* 模糊搜索下拉菜单 */
+.suggestions-list {
+  margin-top: 0.4rem;
+  background: rgba(255 255 255 / 0.2);
+  border-radius: 0.75rem;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  backdrop-filter: blur(16px);
+  color: #1e293b;
+  list-style: none;
+  padding: 0;
+  user-select: none;
+  position: absolute;
+  width: 100%;
+  z-index: 99;
+}
+.suggestions-list li {
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  transition: background-color 0.2s ease;
+}
+.suggestions-list li:last-child {
+  border-bottom: none;
+}
+.suggestions-list li:hover {
+  background-color: #a78bfa;
+  color: white;
+}
+
+/* 天气显示区域 */
+.weather-display {
+  margin-top: 1rem;
+  background: rgba(255 255 255 / 0.18);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  color: #f8fafc;
+  user-select: none;
+}
+
+.weather-city {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+.weather-temp {
+  font-size: 4rem;
+  font-weight: 900;
+  margin: 0.25rem 0;
+  line-height: 1;
+  text-shadow: 0 3px 8px rgba(0,0,0,0.7);
+}
+
+.weather-desc {
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 1rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  letter-spacing: 0.05em;
+}
+
+.weather-details {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.weather-details > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 图标 */
+.weather-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1rem;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+
+/* 加载动画 */
+.loader {
+  border: 5px solid rgba(255,255,255,0.3);
+  border-top: 5px solid #a78bfa;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin: 2rem auto 0;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 响应式 */
+@media (max-width: 520px) {
+  .app-container {
+    width: 90vw;
+    padding: 2rem 1.5rem;
+  }
+  .weather-temp {
+    font-size: 3rem;
+  }
+  .weather-icon {
+    width: 60px;
+    height: 60px;
+  }
+}
