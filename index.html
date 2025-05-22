@@ -1,63 +1,48 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>世界の天気 - Weather Finder</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <title>多语言天气应用</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1 id="title">世界の天気を調べる</h1>
-      <div class="lang-switch">
-        <button data-lang="ja" class="active">日本語</button>
-        <button data-lang="en">English</button>
-        <button data-lang="zh">中文</button>
+  <header>
+    <h1 id="title">天气预报</h1>
+    <select id="langSelect" aria-label="选择语言">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
+  </header>
+
+  <main>
+    <section id="searchSection">
+      <input id="searchInput" type="text" placeholder="请输入城市名" aria-label="搜索城市" autocomplete="off" />
+      <ul id="suggestions" role="listbox" aria-label="搜索建议"></ul>
+      <button id="searchBtn">搜索</button>
+    </section>
+
+    <section id="weatherSection" aria-live="polite" aria-atomic="true">
+      <h2 id="cityName">—</h2>
+      <div id="weatherIcon"></div>
+      <p id="temperature">-- °C</p>
+      <p id="weatherDesc">--</p>
+      <p id="humidity"></p>
+      <p id="wind"></p>
+    </section>
+
+    <section id="favoritesSection">
+      <button id="favBtn">添加收藏</button>
+      <div id="favoritesContainer" class="hidden">
+        <h3>收藏城市</h3>
+        <ul id="favoritesList"></ul>
       </div>
-    </header>
+    </section>
+  </main>
 
-    <main>
-      <div class="search-area">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="場所を入力してください..."
-          autocomplete="off"
-        />
-        <ul id="suggestions" class="suggestions"></ul>
-      </div>
+  <div id="loadingIndicator" class="hidden" aria-live="assertive" role="alert">加载中...</div>
 
-      <div id="loading" class="loading hidden">
-        <div class="spinner"></div>
-      </div>
-
-      <div id="weatherDisplay" class="weather-display hidden">
-        <h2 id="cityName"></h2>
-        <div class="weather-main">
-          <div id="weatherIcon" class="weather-icon"></div>
-          <div class="temperature" id="temperature"></div>
-        </div>
-        <div class="weather-details">
-          <p><span id="weatherDesc"></span></p>
-          <p><span id="humidity"></span></p>
-          <p><span id="wind"></span></p>
-        </div>
-        <button id="favBtn" class="fav-btn" title="收藏城市">☆ 收藏</button>
-      </div>
-
-      <div id="favoritesContainer" class="favorites-container hidden">
-        <h3>收藏的城市</h3>
-        <ul id="favoritesList" class="favorites-list"></ul>
-      </div>
-    </main>
-
-    <footer>
-      <small>© 2025 Weather Finder | Powered by OpenWeatherMap</small>
-    </footer>
-  </div>
-
-  <script src="app.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
