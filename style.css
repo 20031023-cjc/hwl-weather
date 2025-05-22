@@ -1,172 +1,212 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP&family=Noto+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap');
 
 * {
-  margin: 0; padding: 0; box-sizing: border-box;
+  box-sizing: border-box;
 }
+
 body {
-  font-family: 'Noto Sans JP', 'Noto Sans', sans-serif;
-  background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+  margin: 0;
+  font-family: 'Noto Sans JP', sans-serif;
+  background: linear-gradient(135deg, #00b4db, #0083b0);
   min-height: 100vh;
+  color: #fff;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 50px 15px;
-  color: #222;
-  user-select: none;
+  align-items: center;
+  animation: bgFade 20s ease-in-out infinite alternate;
+}
+
+@keyframes bgFade {
+  0% {
+    background: linear-gradient(135deg, #00b4db, #0083b0);
+  }
+  50% {
+    background: linear-gradient(135deg, #43cea2, #185a9d);
+  }
+  100% {
+    background: linear-gradient(135deg, #00b4db, #0083b0);
+  }
 }
 
 .container {
-  background: #fff;
-  border-radius: 16px;
-  padding: 30px 40px;
-  width: 100%;
-  max-width: 460px;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-  animation: fadeIn 0.8s ease forwards;
+  background: rgba(255 255 255 / 0.1);
+  border-radius: 24px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  max-width: 480px;
+  width: 90vw;
+  padding: 32px 24px;
+  text-align: center;
+  backdrop-filter: blur(16px);
 }
 
 header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
+  margin-bottom: 24px;
 }
 
-h1#title {
-  font-weight: 700;
+h1 {
+  font-weight: 900;
   font-size: 1.8rem;
-  color: #333;
+  margin: 0;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+}
+
+.lang-switch {
+  margin-top: 12px;
 }
 
 .lang-switch button {
-  border: none;
-  background: transparent;
-  font-weight: 600;
-  margin-left: 10px;
   cursor: pointer;
-  font-size: 1rem;
-  color: #666;
-  padding: 6px 12px;
-  border-radius: 8px;
+  background: transparent;
+  border: 2px solid #fff;
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  margin: 0 6px;
   transition: background-color 0.3s, color 0.3s;
+  user-select: none;
 }
 
 .lang-switch button.active,
 .lang-switch button:hover {
   background-color: #4caf50;
-  color: white;
-  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+  border-color: #4caf50;
+  color: #fff;
 }
 
-.search-section {
+.search-area {
   position: relative;
-  margin-bottom: 25px;
 }
 
 #searchInput {
   width: 100%;
-  padding: 14px 18px;
+  padding: 14px 20px;
   font-size: 1.1rem;
-  border: 2px solid #ccc;
-  border-radius: 12px;
-  transition: border-color 0.3s ease;
+  border-radius: 40px;
+  border: none;
+  outline: none;
+  box-shadow: 0 0 10px rgba(255 255 255 / 0.3);
+  transition: box-shadow 0.3s ease;
+  color: #222;
+}
+
+#searchInput::placeholder {
+  color: #aaa;
+  font-style: italic;
 }
 
 #searchInput:focus {
-  outline: none;
-  border-color: #4caf50;
-  box-shadow: 0 0 8px rgba(76,175,80,0.5);
+  box-shadow: 0 0 15px #4caf50;
 }
 
 .suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
   max-height: 200px;
   overflow-y: auto;
-  background: white;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 10;
-  animation: slideDown 0.3s ease forwards;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+  color: #222;
+  position: absolute;
+  width: 100%;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.suggestions.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .suggestions li {
-  padding: 10px 18px;
+  padding: 12px 20px;
   cursor: pointer;
-  font-size: 1rem;
-  color: #444;
-  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.25s;
 }
 
 .suggestions li:hover {
-  background-color: #e0f2f1;
+  background-color: #4caf50;
+  color: white;
 }
 
-.weather-section {
-  text-align: center;
-  animation: fadeInUp 0.6s ease forwards;
+.weather-display {
+  margin-top: 32px;
+  background: rgba(255 255 255 / 0.15);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+  color: #fff;
+  animation: fadeInUp 0.5s ease forwards;
+  user-select: none;
 }
 
-.weather-section h2 {
-  font-size: 1.5rem;
-  margin-bottom: 12px;
-  font-weight: 700;
-  color: #2e7d32;
-}
-
-.weather-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  font-size: 1.1rem;
-  color: #555;
-}
-
-.weather-info .icon {
-  font-size: 64px;
-  color: #4caf50;
-  animation: bounce 1.4s infinite;
-}
-
-.weather-info .temp {
-  font-weight: 700;
-  font-size: 2.4rem;
-  color: #388e3c;
-}
-
-.weather-info .desc {
-  font-style: italic;
-  font-size: 1.2rem;
-  color: #666;
-}
-
-.weather-info .details {
-  display: flex;
-  gap: 30px;
-  font-size: 1rem;
-  color: #555;
-}
-
-@keyframes fadeIn {
-  from {opacity: 0;}
-  to {opacity: 1;}
-}
-
-@keyframes slideDown {
-  from {opacity: 0; transform: translateY(-10px);}
-  to {opacity: 1; transform: translateY(0);}
+.weather-display.hidden {
+  display: none;
 }
 
 @keyframes fadeInUp {
-  from {opacity: 0; transform: translateY(20px);}
-  to {opacity: 1; transform: translateY(0);}
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.weather-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.weather-main img {
+  width: 80px;
+  height: 80px;
+  animation: bounce 2s infinite ease-in-out;
+}
+
+.temperature {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #a8e063;
+  text-shadow: 0 0 15px #a8e063aa;
+}
+
+.weather-details {
+  margin-top: 16px;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: #d0f0c0;
+  display: flex;
+  justify-content: space-around;
+}
+
+.weather-details p {
+  margin: 0 10px;
+}
+
+footer {
+  margin-top: 32px;
+  font-size: 0.75rem;
+  color: #ddd;
+  user-select: none;
 }
 
 @keyframes bounce {
-  0%, 100% { transform: translateY(0);}
-  50% { transform: translateY(-10px);}
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
