@@ -1,374 +1,284 @@
+// --- Constants ---
 const API_KEY = "da7be22a064e8e36c8e9385be0d67fc4";
+const WEATHER_API_URL = "https://api.openweathermap.org/data/2.5/weather";
+const CITY_LIST_URL = "https://raw.githubusercontent.com/lutangar/cities.json/master/cities.json";
+
+// --- Elements ---
 const searchInput = document.getElementById("searchInput");
 const suggestions = document.getElementById("suggestions");
 const weatherDisplay = document.getElementById("weatherDisplay");
-const cityNameEl = document.getElementById("cityName");
-const weatherIconEl = document.getElementById("weatherIcon");
+const weatherIcon = document.getElementById("weatherIcon");
 const temperatureEl = document.getElementById("temperature");
-const weatherDescEl = document.getElementById("weatherDesc");
+const weatherDescriptionEl = document.getElementById("weatherDescription");
 const humidityEl = document.getElementById("humidity");
-const windEl = document.getElementById("wind");
-const loadingEl = document.getElementById("loading");
-const favBtn = document.getElementById("favBtn");
-const favoritesContainer = document.getElementById("favoritesContainer");
+const windSpeedEl = document.getElementById("windSpeed");
+const favoriteBtn = document.getElementById("favoriteBtn");
 const favoritesList = document.getElementById("favoritesList");
+const loadingEl = document.getElementById("loading");
 
+// --- Variables ---
+let cities = [];  // 所有城市列表
 let currentCity = null;
-let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-let lang = "ja"; // default language
+let favorites = [];
 
-// 翻译词典（简单示例）
-const translations = {
-  ja: {
-    placeholder: "場所を入力してください...",
-    humidity: "湿度",
-    wind: "風速",
-    favAdd: "☆ 收藏",
-    favRemove: "★ 已收藏",
-    favoritesTitle: "收藏的城市",
-    loading: "読み込み中...",
-  },
-  en: {
-    placeholder: "Enter location...",
-    humidity: "Humidity",
-    wind: "Wind",
-    favAdd: "☆ Favorite",
-    favRemove: "★ Favorited",
-    favoritesTitle: "Favorite Cities",
-    loading: "Loading...",
-  },
-  zh: {
-    placeholder: "请输入地点...",
-    humidity: "湿度",
-    wind: "风速",
-    favAdd: "☆ 收藏",
-    favRemove: "★ 已收藏",
-    favoritesTitle: "收藏的城市",
-    loading: "加载中...",
-  },
-};
-
-function t(key) {
-  return translations[lang][key];
+// --- 初始化 ---
+async function init() {
+  showLoading(true);
+  // 加载城市数据（第一次加载）
+  cities = await fetchCities();
+  // 载入收藏
+  loadFavorites();
+  // 自动定位
+  locateAndShowWeather();
+  showLoading(false);
 }
 
-function setLanguage(newLang) {
-  lang = newLang;
-  searchInput.placeholder = t("placeholder");
-  document.getElementById("title").textContent =
-    lang === "ja"
-      ? "世界の天気を調べる"
-      : lang === "en"
-      ? "World Weather Finder"
-      : "全球天气查询";
-  document.querySelector(".favorites-container h3").textContent = t("favoritesTitle");
-  updateFavBtn();
-  clearSuggestions();
+// --- 加载城市数据 ---
+async function fetchCities() {
+  try {
+    const res = await fetch(CITY_LIST_URL);
+    if (!res.ok) throw new Error("城市数据加载失败");
+    const data = await res.json();
+    // 简化数据结构，方便搜索
+    return data.map(c => ({
+      name: c.name,
+      country: c.country,
+      lat: c.lat,
+      lon: c.lng || c.lon,
+    }));
+  } catch (err) {
+    console.error(err);
+    alert("城市数据加载失败，请刷新重试");
+    return [];
+  }
 }
 
-document.querySelectorAll(".lang-switch button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".lang-switch button").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    setLanguage(btn.dataset.lang);
-  });
-});
-
-// 搜索自动联想
-let debounceTimeout = null;
-searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim();
-  if (debounceTimeout) clearTimeout(debounceTimeout);
-  if (!query) {
-    clearSuggestions();
+// --- 自动定位 ---
+function locateAndShowWeather() {
+  if (!navigator.geolocation) {
+    alert("浏览器不支持定位功能，无法自动定位天气");
     return;
   }
-  debounceTimeout = setTimeout(() => {
-    fetchGeoSuggestions(query);
-  }, 350);
-});
+  showLoading(true);
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    // 用经纬度请求天气
+    await fetchAndShowWeatherByCoords(lat, lon);
+    showLoading(false);
+  }, () => {
+    alert("定位失败，您可以手动搜索城市");
+    showLoading(false);
+  }, {timeout: 8000});
+}
 
+// --- 搜索城市 ---
+function searchCities(query) {
+  if (!query || query.length < 2) {
+    clearSuggestions();
+    return [];
+  }
+  const q = query.toLowerCase();
+  // 模糊搜索，名字或国家代码匹配
+  return cities.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    (c.country && c.country.toLowerCase().includes(q))
+  ).slice(0, 15); // 最多15条建议
+}
+
+// --- 渲染建议列表 ---
+function showSuggestions(list) {
+  suggestions.innerHTML = "";
+  if (!list.length) {
+    suggestions.classList.remove("visible");
+    return;
+  }
+  list.forEach(city => {
+    const li = document.createElement("li");
+    li.textContent = `${city.name}, ${city.country}`;
+    li.tabIndex = 0;
+    li.addEventListener("click", () => {
+      selectCity(city);
+    });
+    li.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") selectCity(city);
+    });
+    suggestions.appendChild(li);
+  });
+  suggestions.classList.add("visible");
+}
+
+// --- 清空建议 ---
 function clearSuggestions() {
   suggestions.innerHTML = "";
   suggestions.classList.remove("visible");
 }
 
-// 用 OpenWeatherMap 的 Geo API 获取位置建议
-async function fetchGeoSuggestions(query) {
-  try {
-    const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
-      query
-    )}&limit=5&appid=${API_KEY}&lang=${lang}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!data || data.length === 0) {
-      clearSuggestions();
-      return;
-    }
-
-    suggestions.innerHTML = "";
-    data.forEach((place) => {
-      const li = document.createElement("li");
-      li.textContent = `${place.name}${place.state ? ", " + place.state : ""}, ${place.country}`;
-      li.dataset.lat = place.lat;
-      li.dataset.lon = place.lon;
-      li.dataset.name = place.name;
-      li.addEventListener("click", () => {
-        clearSuggestions();
-        searchInput.value = li.textContent;
-        fetchWeatherByCoords(place.lat, place.lon, place.name);
-      });
-      suggestions.appendChild(li);
-    });
-
-    suggestions.classList.add("visible");
-  } catch (error) {
-    clearSuggestions();
-    console.error("Geo API error:", error);
-  }
-}
-
-async function fetchWeatherByCoords(lat, lon, cityName) {
+// --- 选择城市，加载天气 ---
+async function selectCity(city) {
+  currentCity = city;
+  searchInput.value = `${city.name}, ${city.country}`;
+  clearSuggestions();
   showLoading(true);
+  await fetchAndShowWeather(city.name, city.country);
+  showLoading(false);
+}
+
+// --- 获取天气数据（城市名） ---
+async function fetchAndShowWeather(cityName, countryCode) {
   try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=${lang}`;
+    const q = countryCode ? `${cityName},${countryCode}` : cityName;
+    const url = `${WEATHER_API_URL}?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=metric&lang=zh_cn`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Weather API error");
+    if (!res.ok) throw new Error("天气数据获取失败");
     const data = await res.json();
-    currentCity = {
-      name: cityName || data.name,
-      lat,
-      lon,
-    };
-    updateWeatherUI(data);
-  } catch (e) {
-    alert("天气数据获取失败");
-    console.error(e);
-  } finally {
-    showLoading(false);
+    displayWeather(data);
+  } catch (err) {
+    alert("无法获取天气数据，请重试");
+    console.error(err);
   }
 }
 
-function updateWeatherUI(data) {
-  // 动画切换
-  gsap.fromTo(
-    weatherDisplay,
-    { opacity: 0, y: 20 },
-    { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }
-  );
+// --- 获取天气数据（经纬度） ---
+async function fetchAndShowWeatherByCoords(lat, lon) {
+  try {
+    const url = `${WEATHER_API_URL}?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=zh_cn`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("天气数据获取失败");
+    const data = await res.json();
+    currentCity = {name: data.name, country: data.sys.country};
+    searchInput.value = `${currentCity.name}, ${currentCity.country}`;
+    displayWeather(data);
+  } catch (err) {
+    alert("无法获取天气数据，请重试");
+    console.error(err);
+  }
+}
 
-  weatherDisplay.classList.remove("hidden");
-  cityNameEl.textContent = data.name;
-
+// --- 显示天气信息 ---
+function displayWeather(data) {
+  // 温度
   temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
-
-  weatherDescEl.textContent =
-    data.weather[0].description.charAt(0).toUpperCase() +
-    data.weather[0].description.slice(1);
-
-  humidityEl.textContent = `${t("humidity")}: ${data.main.humidity}%`;
-  windEl.textContent = `${t("wind")}: ${Math.round(data.wind.speed)} m/s`;
-
+  // 天气描述（中文）
+  weatherDescriptionEl.textContent = data.weather[0].description;
+  // 湿度
+  humidityEl.textContent = `湿度: ${data.main.humidity}%`;
+  // 风速
+  windSpeedEl.textContent = `风速: ${data.wind.speed} m/s`;
+  // 天气图标 SVG 替换
   setWeatherIcon(data.weather[0].icon);
-
-  updateFavBtn();
-  updateFavoritesList();
-  favoritesContainer.classList.toggle("hidden", favorites.length === 0);
+  // 显示容器
+  weatherDisplay.classList.remove("hidden");
+  // 切换收藏按钮状态
+  updateFavoriteBtn();
 }
 
+// --- 设置天气图标，替换成SVG ---
 function setWeatherIcon(iconCode) {
-  // OpenWeatherMap icon code 简单映射为内置 SVG
-  const icons = {
-    "01d": sunnySVG(),
-    "01n": nightSVG(),
-    "02d": partlyCloudySVG(),
-    "02n": partlyCloudyNightSVG(),
-    "03d": cloudySVG(),
-    "03n": cloudySVG(),
-    "04d": overcastSVG(),
-    "04n": overcastSVG(),
-    "09d": rainSVG(),
-    "09n": rainSVG(),
-    "10d": rainSunSVG(),
-    "10n": rainMoonSVG(),
-    "11d": thunderSVG(),
-    "11n": thunderSVG(),
-    "13d": snowSVG(),
-    "13n": snowSVG(),
-    "50d": mistSVG(),
-    "50n": mistSVG(),
+  // openweathermap icon code 对应SVG
+  // 这里提供常用图标的简单替换，更多图标可以扩展
+  const iconMap = {
+    "01d": `<svg viewBox="0 0 64 64" fill="#f5d742"><circle cx="32" cy="32" r="14"/></svg>`,  // 晴天（白天）
+    "01n": `<svg viewBox="0 0 64 64" fill="#aab8c2"><circle cx="32" cy="32" r="14"/></svg>`,  // 晴天（夜晚）
+    "02d": `<svg viewBox="0 0 64 64" fill="#f5d742"><circle cx="32" cy="32" r="12"/><circle cx="44" cy="24" r="10" fill="#cfdde6"/></svg>`,  // 少云白天
+    "02n": `<svg viewBox="0 0 64 64" fill="#aab8c2"><circle cx="32" cy="32" r="12"/><circle cx="44" cy="24" r="10" fill="#778899"/></svg>`,  // 少云夜晚
+    "03d": `<svg viewBox="0 0 64 64" fill="#b0c4de"><circle cx="32" cy="32" r="14"/></svg>`,  // 多云
+    "03n": `<svg viewBox="0 0 64 64" fill="#778899"><circle cx="32" cy="32" r="14"/></svg>`,
+    "04d": `<svg viewBox="0 0 64 64"><rect x="12" y="22" width="40" height="20" fill="#a0acc9" rx="6"/></svg>`,  // 阴天
+    "04n": `<svg viewBox="0 0 64 64"><rect x="12" y="22" width="40" height="20" fill="#52617a" rx="6"/></svg>`,
+    "09d": `<svg viewBox="0 0 64 64" fill="#4a90e2"><path d="M20 44h24v4H20z"/></svg>`,  // 小雨
+    "09n": `<svg viewBox="0 0 64 64" fill="#2c3e50"><path d="M20 44h24v4H20z"/></svg>`,
+    "10d": `<svg viewBox="0 0 64 64" fill="#3d9be9"><path d="M18 44h28v6H18z"/></svg>`,  // 阵雨
+    "10n": `<svg viewBox="0 0 64 64" fill="#2c3e50"><path d="M18 44h28v6H18z"/></svg>`,
+    "11d": `<svg viewBox="0 0 64 64" fill="#f39c12"><path d="M32 10v44"/></svg>`,  // 雷暴
+    "11n": `<svg viewBox="0 0 64 64" fill="#d35400"><path d="M32 10v44"/></svg>`,
+    "13d": `<svg viewBox="0 0 64 64" fill="#e0eaf1"><circle cx="32" cy="32" r="14"/></svg>`,  // 雪
+    "13n": `<svg viewBox="0 0 64 64" fill="#a0b8c9"><circle cx="32" cy="32" r="14"/></svg>`,
+    "50d": `<svg viewBox="0 0 64 64" fill="#bdbdbd"><ellipse cx="32" cy="32" rx="20" ry="10"/></svg>`,  // 雾
+    "50n": `<svg viewBox="0 0 64 64" fill="#6b6b6b"><ellipse cx="32" cy="32" rx="20" ry="10"/></svg>`,
   };
-
-  weatherIconEl.innerHTML = icons[iconCode] || sunnySVG();
+  weatherIcon.innerHTML = iconMap[iconCode] || iconMap["01d"];
 }
 
-// 简单示例 SVG 图标 (可继续扩展和优化)
-
-function sunnySVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFD93B" xmlns="http://www.w3.org/2000/svg" aria-label="晴れ">
-      <circle cx="32" cy="32" r="14"/>
-      <g stroke="#FFD93B" stroke-width="4" stroke-linecap="round">
-        <line x1="32" y1="2" x2="32" y2="14"/>
-        <line x1="32" y1="50" x2="32" y2="62"/>
-        <line x1="2" y1="32" x2="14" y2="32"/>
-        <line x1="50" y1="32" x2="62" y2="32"/>
-        <line x1="12" y1="12" x2="20" y2="20"/>
-        <line x1="44" y1="44" x2="52" y2="52"/>
-        <line x1="12" y1="52" x2="20" y2="44"/>
-        <line x1="44" y1="20" x2="52" y2="12"/>
-      </g>
-    </svg>
-  `;
+// --- 收藏功能 ---
+// 载入收藏
+function loadFavorites() {
+  const saved = localStorage.getItem("favorites");
+  favorites = saved ? JSON.parse(saved) : [];
+  renderFavorites();
 }
 
-function nightSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFF" xmlns="http://www.w3.org/2000/svg" aria-label="夜">
-      <path d="M43 32a15 15 0 1 1-24-13 20 20 0 0 0 24 13z" fill="#f0f0f0" />
-    </svg>
-  `;
-}
-
-function partlyCloudySVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFC107" xmlns="http://www.w3.org/2000/svg" aria-label="晴れ時々曇り">
-      <circle cx="24" cy="24" r="10"/>
-      <ellipse cx="44" cy="40" rx="16" ry="12" fill="#ccc"/>
-    </svg>
-  `;
-}
-
-function partlyCloudyNightSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFF" xmlns="http://www.w3.org/2000/svg" aria-label="夜の晴れ時々曇り">
-      <path d="M20 28a10 10 0 1 1 12-15 16 16 0 0 0-12 15z" fill="#ddd"/>
-      <ellipse cx="44" cy="40" rx="16" ry="12" fill="#777"/>
-    </svg>
-  `;
-}
-
-function cloudySVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#ccc" xmlns="http://www.w3.org/2000/svg" aria-label="曇り">
-      <ellipse cx="32" cy="36" rx="22" ry="14"/>
-    </svg>
-  `;
-}
-
-function overcastSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#999" xmlns="http://www.w3.org/2000/svg" aria-label="厚い曇り">
-      <ellipse cx="32" cy="36" rx="28" ry="18"/>
-    </svg>
-  `;
-}
-
-function rainSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#00BCD4" xmlns="http://www.w3.org/2000/svg" aria-label="雨">
-      <ellipse cx="32" cy="36" rx="28" ry="18"/>
-      <line x1="20" y1="48" x2="20" y2="60" stroke="#03A9F4" stroke-width="4" stroke-linecap="round"/>
-      <line x1="32" y1="48" x2="32" y2="60" stroke="#03A9F4" stroke-width="4" stroke-linecap="round"/>
-      <line x1="44" y1="48" x2="44" y2="60" stroke="#03A9F4" stroke-width="4" stroke-linecap="round"/>
-    </svg>
-  `;
-}
-
-function rainSunSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFC107" xmlns="http://www.w3.org/2000/svg" aria-label="雨時々晴れ">
-      <circle cx="20" cy="20" r="8"/>
-      <ellipse cx="44" cy="36" rx="22" ry="14" fill="#00BCD4"/>
-      <line x1="16" y1="32" x2="16" y2="44" stroke="#03A9F4" stroke-width="4" stroke-linecap="round"/>
-      <line x1="24" y1="32" x2="24" y2="44" stroke="#03A9F4" stroke-width="4" stroke-linecap="round"/>
-    </svg>
-  `;
-}
-
-function rainMoonSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#EEE" xmlns="http://www.w3.org/2000/svg" aria-label="雨の夜">
-      <path d="M30 28a12 12 0 1 1 20-10 18 18 0 0 0-20 10z" fill="#90CAF9"/>
-      <line x1="22" y1="40" x2="22" y2="52" stroke="#42A5F5" stroke-width="4" stroke-linecap="round"/>
-      <line x1="30" y1="40" x2="30" y2="52" stroke="#42A5F5" stroke-width="4" stroke-linecap="round"/>
-    </svg>
-  `;
-}
-
-function thunderSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#FFEB3B" xmlns="http://www.w3.org/2000/svg" aria-label="雷">
-      <polygon points="24,2 44,30 32,30 42,62 20,34 32,34" />
-    </svg>
-  `;
-}
-
-function snowSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#90CAF9" xmlns="http://www.w3.org/2000/svg" aria-label="雪">
-      <circle cx="32" cy="32" r="14" stroke="#42A5F5" stroke-width="4" fill="none"/>
-      <line x1="32" y1="10" x2="32" y2="54" stroke="#42A5F5" stroke-width="4"/>
-      <line x1="10" y1="32" x2="54" y2="32" stroke="#42A5F5" stroke-width="4"/>
-      <line x1="14" y1="14" x2="50" y2="50" stroke="#42A5F5" stroke-width="4"/>
-      <line x1="14" y1="50" x2="50" y2="14" stroke="#42A5F5" stroke-width="4"/>
-    </svg>
-  `;
-}
-
-function mistSVG() {
-  return `
-    <svg viewBox="0 0 64 64" fill="#B0BEC5" xmlns="http://www.w3.org/2000/svg" aria-label="霧">
-      <rect x="10" y="28" width="44" height="8" rx="4" ry="4"/>
-      <rect x="6" y="36" width="52" height="8" rx="4" ry="4"/>
-    </svg>
-  `;
-}
-
-function updateFavBtn() {
-  if (!currentCity) return;
-  const isFav = favorites.some(
-    (f) => f.name === currentCity.name && f.lat === currentCity.lat && f.lon === currentCity.lon
-  );
-  favBtn.textContent = isFav ? t("favRemove") : t("favAdd");
-}
-
-favBtn.addEventListener("click", () => {
-  if (!currentCity) return;
-  const idx = favorites.findIndex(
-    (f) => f.name === currentCity.name && f.lat === currentCity.lat && f.lon === currentCity.lon
-  );
-  if (idx === -1) {
-    favorites.push(currentCity);
-  } else {
-    favorites.splice(idx, 1);
-  }
+// 保存收藏
+function saveFavorites() {
   localStorage.setItem("favorites", JSON.stringify(favorites));
-  updateFavBtn();
-  updateFavoritesList();
-  favoritesContainer.classList.toggle("hidden", favorites.length === 0);
-});
+}
 
-function updateFavoritesList() {
+// 渲染收藏列表
+function renderFavorites() {
   favoritesList.innerHTML = "";
-  favorites.forEach((fav) => {
-    const li = document.createElement("li");
-    li.textContent = fav.name;
-    li.addEventListener("click", () => {
-      fetchWeatherByCoords(fav.lat, fav.lon, fav.name);
+  favorites.forEach(city => {
+    const btn = document.createElement("button");
+    btn.className = "fav-city-btn";
+    btn.textContent = `${city.name}, ${city.country}`;
+    btn.addEventListener("click", () => {
+      selectCity(city);
     });
-    favoritesList.appendChild(li);
+    favoritesList.appendChild(btn);
   });
 }
 
-function showLoading(isLoading) {
-  loadingIndicator.style.display = isLoading ? "block" : "none";
+// 添加或移除收藏
+function toggleFavorite() {
+  if (!currentCity) return;
+  const index = favorites.findIndex(c => c.name === currentCity.name && c.country === currentCity.country);
+  if (index >= 0) {
+    // 移除收藏
+    favorites.splice(index, 1);
+  } else {
+    // 添加收藏
+    favorites.push(currentCity);
+  }
+  saveFavorites();
+  renderFavorites();
+  updateFavoriteBtn();
 }
 
-// 页面加载时，设置默认语言和显示收藏列表
-setLanguage(lang);
-updateFavoritesList();
-favoritesContainer.classList.toggle("hidden", favorites.length === 0);
+// 更新收藏按钮状态
+function updateFavoriteBtn() {
+  if (!currentCity) {
+    favoriteBtn.textContent = "收藏";
+    favoriteBtn.disabled = true;
+    return;
+  }
+  const isFav = favorites.some(c => c.name === currentCity.name && c.country === currentCity.country);
+  favoriteBtn.textContent = isFav ? "取消收藏" : "收藏";
+  favoriteBtn.disabled = false;
+}
 
-export {};  
+// --- loading ---
+function showLoading(flag) {
+  loadingEl.style.display = flag ? "flex" : "none";
+}
+
+// --- 事件绑定 ---
+searchInput.addEventListener("input", e => {
+  const query = e.target.value.trim();
+  if (query.length < 2) {
+    clearSuggestions();
+    return;
+  }
+  const results = searchCities(query);
+  showSuggestions(results);
+});
+
+favoriteBtn.addEventListener("click", toggleFavorite);
+
+document.addEventListener("click", (e) => {
+  // 点击输入框以外区域关闭建议框
+  if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+    clearSuggestions();
+  }
+});
+
+// --- 启动 ---
+init();
