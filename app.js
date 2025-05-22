@@ -42,7 +42,6 @@ const cityList = [
   { name_ja: '上海', name_en: 'Shanghai', name_zh: '上海', pinyin: 'shanghai' },
   { name_ja: '広州', name_en: 'Guangzhou', name_zh: '广州', pinyin: 'guangzhou' },
   { name_ja: '釜山', name_en: 'Busan', name_zh: '釜山', pinyin: 'busan' },
-  // 更多城市可扩充...
 ];
 
 // 当前语言状态
@@ -122,7 +121,6 @@ function showSuggestions(list) {
   } else {
     list.forEach(city => {
       const li = document.createElement('li');
-      // 语言对应显示名称
       li.textContent = currentLang === 'ja' ? city.name_ja : currentLang === 'en' ? city.name_en : city.name_zh;
       li.dataset.name_en = city.name_en;
       li.addEventListener('click', () => {
@@ -172,5 +170,29 @@ async function fetchWeather(cityName) {
   }
 }
 
-// 输入事件处理
-search
+// 输入事件处理 - 模糊搜索
+searchInput.addEventListener('input', () => {
+  const query = searchInput.value;
+  if (!query) {
+    clearSuggestions();
+    return;
+  }
+  const results = fuzzySearch(query);
+  showSuggestions(results);
+});
+
+// 按键事件处理 - 按回车选中第一个建议
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const firstSuggestion = suggestionsEl.querySelector('li:not(.no-results)');
+    if (firstSuggestion) {
+      selectCity(firstSuggestion.dataset.name_en);
+    }
+  }
+});
+
+// 页面加载初始化
+updateLanguage();
+clearWeather();
+clearSuggestions();
