@@ -1,152 +1,151 @@
-const { useState, useEffect, useMemo } = React;
-
 const API_KEY = "da7be22a064e8e36c8e9385be0d67fc4";
 
-const cities = [
-  { jp: "東京", cn: "东京", en: "Tokyo" },
-  { jp: "ニューヨーク", cn: "纽约", en: "New York" },
-  { jp: "ロンドン", cn: "伦敦", en: "London" },
-  { jp: "パリ", cn: "巴黎", en: "Paris" },
-  { jp: "上海", cn: "上海", en: "Shanghai" },
-  { jp: "北京", cn: "北京", en: "Beijing" },
-  { jp: "ソウル", cn: "首尔", en: "Seoul" },
-  { jp: "台北", cn: "台北", en: "Taipei" },
-  { jp: "福岡", cn: "福冈", en: "Fukuoka" },
-  { jp: "福州", cn: "福州", en: "Fuzhou" },
-  // 可继续补充更多城市
-];
+const elements = {
+  searchInput: document.getElementById("searchInput"),
+  suggestions: document.getElementById("suggestions"),
+  weatherSection: document.querySelector(".weather-section"),
+  locationName: document.getElementById("locationName"),
+  weatherIcon: document.getElementById("weatherIcon"),
+  temp: document.getElementById("temp"),
+  desc: document.getElementById("desc"),
+  humidity: document.getElementById("humidity"),
+  wind: document.getElementById("wind"),
+  langButtons: document.querySelectorAll(".lang-switch button"),
+  title: document.getElementById("title"),
+};
 
-const translations = {
+const LANGUAGES = {
   ja: {
-    placeholder: "都市名を入力してください...",
-    title: "世界の天気検索サイト",
-    langBtn: "EN",
-    loading: "読み込み中...",
-    error: "天気情報が見つかりません。",
-    feels_like: "体感温度",
+    title: "世界の天気を調べる",
+    placeholder: "場所を入力してください...",
     humidity: "湿度",
     wind: "風速",
   },
-  cn: {
-    placeholder: "请输入城市名称...",
-    title: "世界天气搜索网站",
-    langBtn: "日",
-    loading: "加载中...",
-    error: "找不到天气信息。",
-    feels_like: "体感温度",
-    humidity: "湿度",
-    wind: "风速",
-  },
   en: {
-    placeholder: "Type city name...",
-    title: "World Weather Search",
-    langBtn: "日",
-    loading: "Loading...",
-    error: "Weather info not found.",
-    feels_like: "Feels Like",
+    title: "Check Weather Worldwide",
+    placeholder: "Enter a location...",
     humidity: "Humidity",
     wind: "Wind Speed",
   },
+  zh: {
+    title: "查询全球天气",
+    placeholder: "请输入地点...",
+    humidity: "湿度",
+    wind: "风速",
+  },
 };
 
-function App() {
-  const [lang, setLang] = useState("ja");
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+let currentLang = "ja";
 
-  // Fuse.js 搜索配置，支持3种语言的城市名搜索
-  const fuse = useMemo(() => new Fuse(cities, {
-    keys: ["jp", "cn", "en"],
-    threshold: 0.3,
-  }), []);
+// 语言切换
+elements.langButtons.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    if (btn.dataset.lang === currentLang) return;
+    currentLang = btn.dataset.lang;
+    updateLanguage();
+  })
+);
 
-  useEffect(() => {
-    if (query.length > 0) {
-      const result = fuse.search(query);
-      setSuggestions(result.map(r => r.item));
-    } else {
-      setSuggestions([]);
-    }
-  }, [query, fuse]);
-
-  function fetchWeather(city) {
-    setLoading(true);
-    setError("");
-    setWeather(null);
-
-    // API请求时，优先用英文城市名（OpenWeatherMap支持）
-    const cityName = city.en;
-    axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${cityName}&units=metric&appid=${API_KEY}`)
-      .then(res => {
-        setWeather(res.data);
-        setLoading(false);
-        setSuggestions([]);
-        setQuery(""); // 选择后清空输入框
-      })
-      .catch(() => {
-        setError(translations[lang].error);
-        setLoading(false);
-      });
-  }
-
-  function handleSelectCity(city) {
-    fetchWeather(city);
-  }
-
-  function toggleLang() {
-    if (lang === "ja") setLang("en");
-    else if (lang === "en") setLang("cn");
-    else setLang("ja");
-  }
-
-  return (
-    <div className="app-container" style={{ fontSize: "16px" }}>
-      <h1>{translations[lang].title}</h1>
-      <button className="lang-select" onClick={toggleLang}>{translations[lang].langBtn}</button>
-      <input
-        type="text"
-        className="search-input"
-        placeholder={translations[lang].placeholder}
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        spellCheck="false"
-        autoComplete="off"
-      />
-      {suggestions.length > 0 && (
-        <ul className="suggestions-list">
-          {suggestions.map(city => (
-            <li key={city.en} onClick={() => handleSelectCity(city)}>
-              {city[lang]}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {loading && <div className="loader"></div>}
-
-      {weather && !loading && (
-        <div className="weather-display" key={weather.id}>
-          <div className="weather-city">{weather.name}</div>
-          <img
-            className="weather-icon"
-            src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png`}
-            alt={weather.weather[0].description}
-          />
-          <div className="weather-temp">{Math.round(weather.main.temp)}°C</div>
-          <div className="weather-desc">{weather.weather[0].description}</div>
-          <div className="weather-details">
-            <div>{translations[lang].feels_like}: {Math.round(weather.main.feels_like)}°C</div>
-            <div>{translations[lang].humidity}: {weather.main.humidity}%</div>
-            <div>{translations[lang].wind}: {weather.wind.speed}m/s</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function updateLanguage() {
+  const langData = LANGUAGES[currentLang];
+  elements.title.textContent = langData.title;
+  elements.searchInput.placeholder = langData.placeholder;
+  elements.langButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === currentLang);
+  });
+  clearWeather();
+  clearSuggestions();
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+// 模糊搜索用示例城市数据（现实中可接入更完整的数据库或API）
+const cities = [
+  { name: { ja: "福岡", en: "Fukuoka", zh: "福州" }, lat: 33.5902, lon: 130.4017 },
+  { name: { ja: "東京", en: "Tokyo", zh: "东京" }, lat: 35.6762, lon: 139.6503 },
+  { name: { ja: "ニューヨーク", en: "New York", zh: "纽约" }, lat: 40.7128, lon: -74.006 },
+  { name: { ja: "大阪", en: "Osaka", zh: "大阪" }, lat: 34.6937, lon: 135.5023 },
+  { name: { ja: "福州", en: "Fuzhou", zh: "福州" }, lat: 26.0745, lon: 119.2965 },
+  { name: { ja: "札幌", en: "Sapporo", zh: "札幌" }, lat: 43.0618, lon: 141.3545 },
+  { name: { ja: "北京", en: "Beijing", zh: "北京" }, lat: 39.9042, lon: 116.4074 },
+  // 可扩展更多城市...
+];
+
+// 输入时更新建议列表
+elements.searchInput.addEventListener("input", () => {
+  const input = elements.searchInput.value.trim().toLowerCase();
+  if (!input) {
+    clearSuggestions();
+    return;
+  }
+
+  // 过滤城市名，模糊匹配当前语言名和其他两种语言名
+  const filtered = cities.filter((city) => {
+    return (
+      city.name.ja.includes(input) ||
+      city.name.en.toLowerCase().includes(input) ||
+      city.name.zh.includes(input)
+    );
+  });
+
+  showSuggestions(filtered.slice(0, 6));
+});
+
+function showSuggestions(list) {
+  elements.suggestions.innerHTML = "";
+  if (list.length === 0) {
+    clearSuggestions();
+    return;
+  }
+
+  list.forEach((city) => {
+    const li = document.createElement("li");
+    li.textContent = city.name[currentLang];
+    li.addEventListener("click", () => {
+      elements.searchInput.value = city.name[currentLang];
+      clearSuggestions();
+      fetchWeather(city.lat, city.lon);
+    });
+    elements.suggestions.appendChild(li);
+  });
+}
+
+function clearSuggestions() {
+  elements.suggestions.innerHTML = "";
+  elements.suggestions.style.display = "none";
+}
+
+function clearWeather() {
+  elements.weatherSection.hidden = true;
+  elements.locationName.textContent = "";
+  elements.weatherIcon.textContent = "";
+  elements.temp.textContent = "";
+  elements.desc.textContent = "";
+  elements.humidity.textContent = "";
+  elements.wind.textContent = "";
+}
+
+async function fetchWeather(lat, lon) {
+  const langForApi = currentLang === "zh" ? "zh_cn" : currentLang; // API用zh_cn
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=${langForApi}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("APIエラー");
+    const data = await res.json();
+
+    // 更新页面
+    elements.locationName.textContent = data.name;
+    elements.weatherIcon.innerHTML = `<img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@4x.png" alt="weather icon" />`;
+    elements.temp.textContent = `${Math.round(data.main.temp)}°C`;
+    elements.desc.textContent = data.weather[0].description;
+    elements.humidity.textContent = `${LANGUAGES[currentLang].humidity}: ${data.main.humidity}%`;
+    elements.wind.textContent = `${LANGUAGES[currentLang].wind}: ${data.wind.speed} m/s`;
+
+    elements.weatherSection.hidden = false;
+  } catch (error) {
+    alert("天気情報の取得に失敗しました。");
+    clearWeather();
+  }
+}
+
+// 初始化语言
+updateLanguage();
