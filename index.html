@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>世界の天気 - Weather Finder</title>
   <link rel="stylesheet" href="style.css" />
+  <script defer src="script.js"></script>
 </head>
 <body>
   <div class="container">
@@ -19,12 +20,7 @@
 
     <main>
       <div class="search-area">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="場所を入力してください..."
-          autocomplete="off"
-        />
+        <input type="text" id="searchInput" placeholder="場所を入力してください..." autocomplete="off" />
         <ul id="suggestions" class="suggestions"></ul>
       </div>
 
@@ -35,17 +31,11 @@
           <div class="temperature" id="temperature"></div>
         </div>
         <div class="weather-details">
-          <p><span id="weatherDesc"></span></p>
-          <p><span id="humidity"></span></p>
-          <p><span id="wind"></span></p>
+          <p><span id="weatherHumidity"></span></p>
+          <p><span id="weatherWind"></span></p>
         </div>
       </div>
     </main>
-    <footer>
-      <small>© 2025 Weather Finder | Powered by OpenWeatherMap</small>
-    </footer>
   </div>
-
-  <script src="app.js"></script>
 </body>
 </html>
