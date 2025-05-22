@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>世界の天気 - Weather Finder</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 <body>
-  <div class="overlay"></div>
   <div class="container">
     <header>
       <h1 id="title">世界の天気を調べる</h1>
@@ -27,37 +27,37 @@
           autocomplete="off"
         />
         <ul id="suggestions" class="suggestions"></ul>
-        <button id="locateBtn" title="現在位置の天気を表示">📍</button>
       </div>
 
       <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <p>読み込み中...</p>
       </div>
 
       <div id="weatherDisplay" class="weather-display hidden">
         <h2 id="cityName"></h2>
         <div class="weather-main">
-          <div class="icon" id="weatherIcon"></div>
+          <div id="weatherIcon" class="weather-icon"></div>
           <div class="temperature" id="temperature"></div>
         </div>
         <div class="weather-details">
-          <p><span id="weatherHumidity"></span></p>
-          <p><span id="weatherWind"></span></p>
+          <p><span id="weatherDesc"></span></p>
+          <p><span id="humidity"></span></p>
+          <p><span id="wind"></span></p>
         </div>
+        <button id="favBtn" class="fav-btn" title="收藏城市">☆ 收藏</button>
       </div>
 
-      <section class="favorites">
-        <h3>⭐ お気に入りの都市</h3>
-        <ul id="favoriteCities" class="favorite-list"></ul>
-      </section>
+      <div id="favoritesContainer" class="favorites-container hidden">
+        <h3>收藏的城市</h3>
+        <ul id="favoritesList" class="favorites-list"></ul>
+      </div>
     </main>
 
     <footer>
-      <p>© 2025 WeatherFinder. SVG icons by you 🌤</p>
+      <small>© 2025 Weather Finder | Powered by OpenWeatherMap</small>
     </footer>
   </div>
 
-  <script src="script.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
